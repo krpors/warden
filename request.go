@@ -71,66 +71,66 @@ func (a assertion) Find(content []byte) bool {
 // newRequest attempts to build a new request object using the specified reader.
 func newRequest(rd io.Reader) (request, error) {
 	reader := bufio.NewReader(rd)
-	frontMatter := bytes.Buffer{}
-	body := bytes.Buffer{}
 
-	var writeTarget *bytes.Buffer
-	writeTarget = &frontMatter
-
-	// When the frontmatter is found, this will become true. If the frontmatter is not found,
-	// this will report an error eventually.
-	frontMatterFound := false
+	var writer *bytes.Buffer            // Writer to use.
+	writerFrontMatter := bytes.Buffer{} // writer for the front-matter (metadata)
+	writerBody := bytes.Buffer{}        // writer for the body contents
+	found := false                      // Whether the front matter was found.
+	writer = &writerFrontMatter         // Start by writing to the front matter.
 
 	for {
 		b, err := reader.ReadByte()
 		if err != nil {
+			// no more bytes to read, stop reading by breaking
 			break
 		}
 
-		// Check for the separator '---'
-		if b == '-' && !frontMatterFound {
-			// Peek ahead at the next 2 bytes if that's '--'
-			nextBytes, err := reader.Peek(2)
+		writer.WriteByte(b)
+
+		// Beginning of a new line.
+		if (b == '\n' || b == '\r') && !found {
+			// Peek at possible first three bytes (---)
+			peek, err := reader.Peek(3)
 			if err != nil {
+				// Failed to peek 3 bytes, we got no three dashes.
 				return request{}, err
 			}
-			if string(nextBytes) == "--" {
-				// Discard these two characters by advancing the reader.
-				reader.Discard(2)
-				// Now, check if the next two bytes is a carriage return and/or a line-feed
-				nextBytes, err := reader.Peek(2)
+			if string(peek) == "---" {
+				reader.Discard(3)
+				// if next byte is a CR or LF, skip it.
+				peek, err := reader.Peek(1)
 				if err != nil {
 					return request{}, err
 				}
-				if nextBytes[0] == '\r' || nextBytes[0] == '\n' {
+				if peek[0] == '\r' || peek[0] == '\n' {
 					reader.Discard(1)
 				}
-				if nextBytes[1] == '\n' {
+				peek, err = reader.Peek(1)
+				if err != nil {
+					return request{}, err
+				}
+				if peek[0] == '\r' || peek[0] == '\n' {
 					reader.Discard(1)
 				}
-
-				writeTarget = &body
-				frontMatterFound = true
+				found = true
+				writer = &writerBody
 			}
-
-			continue
 		}
 
-		writeTarget.WriteByte(b)
 	}
 
-	if !frontMatterFound {
-		return request{}, fmt.Errorf("front matter not found")
+	if !found {
+		return request{}, fmt.Errorf("no front-matter found")
 	}
 
 	// At this point, we got some possible front matter, and a request body.
 	// First try to parse the front matter.
 	req := request{}
-	err := json.Unmarshal(frontMatter.Bytes(), &req)
+	err := json.Unmarshal(writerFrontMatter.Bytes(), &req)
 	if err != nil {
 		return request{}, err
 	}
-	req.Body = body.String()
+	req.Body = string(writerBody.String())
 
 	return req, nil
 }

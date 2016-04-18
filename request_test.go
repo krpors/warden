@@ -8,8 +8,8 @@ import (
 // Tests a normal request, with a normal front-matter plus some body content.
 func TestNewRequestNormal(t *testing.T) {
 	doc := `{
-    "name": "Example org testing",
-    "url": "http://example.org",
+    "name": "Example org-testing---",
+    "url": "http://example.org/some-uri-with-dashes",
     "method": "GET",
 	"timeout": 10000,
     "headers": [
@@ -34,11 +34,11 @@ This is the data to send to the URL given above.`
 	if req.Method != expected {
 		t.Errorf("expected 'GET' method, got '%v'", req.Method)
 	}
-	expected = "Example org testing"
+	expected = "Example org-testing---"
 	if req.Name != expected {
 		t.Errorf("expected '%v', got '%v'", expected, req.Name)
 	}
-	expected = "http://example.org"
+	expected = "http://example.org/some-uri-with-dashes"
 	if req.URL != expected {
 		t.Errorf("expected '%v', got '%v'", expected, req.URL)
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -39,6 +40,24 @@ type result struct {
 	Response     string        // response as a string
 	ResponseTime time.Duration // response time
 	Error        error         // possible error
+}
+
+// String returns a string representation of the result.
+func (r result) String() string {
+	b := &bytes.Buffer{}
+	if r.Error == nil {
+		fmt.Fprint(b, "OK    ")
+	} else {
+		fmt.Fprint(b, "FAIL  ")
+	}
+
+	fmt.Fprintf(b, "%s (%d ms)", r.Request.Name, r.ResponseTime/time.Millisecond)
+
+	if r.Error != nil {
+		fmt.Fprintf(b, "; error: %v", r.Error)
+	}
+
+	return b.String()
 }
 
 // scanDirectory scans a directory for request configuration files. Will return
@@ -144,6 +163,18 @@ func send(r request, c chan result) {
 		return
 	}
 
+	// Print some debugging information, if applicable.
+	if *flagDebug {
+		debug.Printf("[%s]: HTTP request:\n%s", r.Name, r.Body)
+		for _, k := range r.Headers {
+			debug.Printf("[%s]: HTTP request header: %s\n", r.Name, k)
+		}
+		for k, v := range theResponse.Resp.Header {
+			debug.Printf("[%s]: HTTP response header: %s=%s\n", r.Name, k, v[0])
+		}
+		debug.Printf("[%s]: HTTP response:\n%s", r.Name, str)
+	}
+
 	for _, assert := range r.Assertions {
 		if !assert.Find(str) {
 			c <- result{r, "", responseTime, fmt.Errorf("assertion failed: '%s'", assert)}
@@ -155,6 +186,7 @@ func send(r request, c chan result) {
 	c <- result{r, string(str), responseTime, nil}
 }
 
+// run iterates over the requests, sends them to their destinations. Gather results.
 func run(requests []request) error {
 	c := make(chan result)
 	for _, request := range requests {
@@ -163,7 +195,7 @@ func run(requests []request) error {
 
 	for range requests {
 		res := <-c
-		fmt.Printf("request '%s', response time: %v, returned: '%v'\n", res.Request.Name, res.ResponseTime, res.Error)
+		fmt.Println(res)
 	}
 
 	return nil
