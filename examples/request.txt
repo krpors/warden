@@ -1,0 +1,15 @@
+{
+    "name": "Example org testing",
+    "url": "http://example.org",
+    "method": "GET",
+    "timeout": 10000,
+    "headers": [
+        "Authorization: Basic bG9sbGVyY29hc3Rlcgo=",
+        "Some-HTTP-Header: Blah blah"
+    ],
+    "assertions": [
+        "Example Domain",
+        "<body>"
+    ]
+}
+---
