@@ -100,18 +100,23 @@ func newRequest(rd io.Reader) (request, error) {
 				// if next byte is a CR or LF, skip it.
 				peek, err := reader.Peek(1)
 				if err != nil {
-					return request{}, err
+					// no thing after the ---, no body.
+					found = true
+					break
 				}
 				if peek[0] == '\r' || peek[0] == '\n' {
 					reader.Discard(1)
 				}
 				peek, err = reader.Peek(1)
 				if err != nil {
-					return request{}, err
+					// nothing after ---
+					found = true
+					break
 				}
 				if peek[0] == '\r' || peek[0] == '\n' {
 					reader.Discard(1)
 				}
+
 				found = true
 				writer = &writerBody
 			}

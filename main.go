@@ -179,15 +179,16 @@ func send(r request, c chan result) {
 		if r.Body == "" {
 			debug.Printf("[%s]: no body content", r.Name)
 		} else {
-			debug.Printf("[%s]: body   >>:\n%s", r.Name, r.Body)
+			debug.Printf("[%s]: >> body:   \n%s", r.Name, r.Body)
 		}
 		for _, k := range r.Headers {
-			debug.Printf("[%s]: header >>: %s\n", r.Name, k)
+			debug.Printf("[%s]: >> header:        %s\n", r.Name, k)
 		}
+		debug.Printf("[%s]: << response code: %d\n", r.Name, theResponse.Resp.StatusCode)
 		for k, v := range theResponse.Resp.Header {
-			debug.Printf("[%s]: header <<: %s = %s\n", r.Name, k, v[0])
+			debug.Printf("[%s]: << header:        %s = %s\n", r.Name, k, v[0])
 		}
-		debug.Printf("[%s]: body   <<:\n%s", r.Name, str)
+		debug.Printf("[%s]: << body:\n%s", r.Name, str)
 	}
 
 	for _, assert := range r.Assertions {

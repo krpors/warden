@@ -69,6 +69,7 @@ func TestNewRequestNoBody(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed parsing request: %v", err)
 	}
+	_ = req
 }
 
 // Tests a request with a front matter divider, but without any content.
