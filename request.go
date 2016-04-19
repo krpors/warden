@@ -93,7 +93,7 @@ func newRequest(rd io.Reader) (request, error) {
 			peek, err := reader.Peek(3)
 			if err != nil {
 				// Failed to peek 3 bytes, we got no three dashes.
-				return request{}, err
+				return request{}, fmt.Errorf("invalid file format")
 			}
 			if string(peek) == "---" {
 				reader.Discard(3)

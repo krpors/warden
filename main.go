@@ -15,6 +15,13 @@ import (
 
 const version = "1.0.0"
 
+const (
+	exitOk               = 0
+	exitGenericFileError = 1
+	exitNoFilesFound     = 2
+	exitInvalidFlags     = 3
+)
+
 // noopWriter is a writer which write to nowhere.
 // TODO: isn't there a builtin type for this? Can't seem to find it.
 type noopWriter struct {
@@ -95,8 +102,7 @@ func scanDirectory(d string) ([]request, error) {
 		filepath := path.Join(d, fileInfo.Name())
 		file, err := os.Open(filepath)
 		if err != nil {
-			// TODO: mark as failure.
-			fmt.Println(err)
+			debug.Printf("couldn't read file: %s", err)
 			continue
 		}
 		defer file.Close()
@@ -110,7 +116,12 @@ func scanDirectory(d string) ([]request, error) {
 		requests = append(requests, req)
 	}
 
-	debug.Printf("Found %d correct requests", len(requests))
+	if *flagDebug {
+		debug.Printf("Found %d correct requests:", len(requests))
+		for i, req := range requests {
+			debug.Printf("%d: %v", i+1, req.Name)
+		}
+	}
 
 	return requests, nil
 }
@@ -165,14 +176,18 @@ func send(r request, c chan result) {
 
 	// Print some debugging information, if applicable.
 	if *flagDebug {
-		debug.Printf("[%s]: HTTP request:\n%s", r.Name, r.Body)
+		if r.Body == "" {
+			debug.Printf("[%s]: no body content", r.Name)
+		} else {
+			debug.Printf("[%s]: body   >>:\n%s", r.Name, r.Body)
+		}
 		for _, k := range r.Headers {
-			debug.Printf("[%s]: HTTP request header: %s\n", r.Name, k)
+			debug.Printf("[%s]: header >>: %s\n", r.Name, k)
 		}
 		for k, v := range theResponse.Resp.Header {
-			debug.Printf("[%s]: HTTP response header: %s=%s\n", r.Name, k, v[0])
+			debug.Printf("[%s]: header <<: %s = %s\n", r.Name, k, v[0])
 		}
-		debug.Printf("[%s]: HTTP response:\n%s", r.Name, str)
+		debug.Printf("[%s]: body   <<:\n%s", r.Name, str)
 	}
 
 	for _, assert := range r.Assertions {
@@ -187,18 +202,34 @@ func send(r request, c chan result) {
 }
 
 // run iterates over the requests, sends them to their destinations. Gather results.
-func run(requests []request) error {
+func run(requests []request) {
+	if len(requests) <= 0 {
+		fmt.Println("No valid request files could be found. Aborting.")
+		os.Exit(exitNoFilesFound)
+	}
+
 	c := make(chan result)
 	for _, request := range requests {
 		go send(request, c)
 	}
 
+	countFail := 0
+	countOk := 0
+
 	for range requests {
 		res := <-c
+		if res.Error != nil {
+			countFail++
+		} else {
+			countOk++
+		}
 		fmt.Println(res)
 	}
 
-	return nil
+	fmt.Println()
+	fmt.Printf("Total requests: %d\n", len(requests))
+	fmt.Printf("OK:             %d\n", countOk)
+	fmt.Printf("Failures:       %d\n", countFail)
 }
 
 // usage prints the usage of the program.
@@ -210,7 +241,7 @@ TODO: some explanation.
 FLAGS (with defaults):
 `)
 	flag.PrintDefaults()
-	os.Exit(4)
+	os.Exit(exitInvalidFlags)
 }
 
 func main() {
@@ -224,7 +255,7 @@ func main() {
 	requests, err := scanDirectory(*flagDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to scan directory '%s': %v\n", *flagDir, err)
-		os.Exit(3)
+		os.Exit(exitGenericFileError)
 	}
 
 	run(requests)

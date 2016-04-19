@@ -50,6 +50,27 @@ This is the data to send to the URL given above.`
 	}
 }
 
+// Tests a normal request, with a normal front-matter plus some body content.
+func TestNewRequestNoBody(t *testing.T) {
+	doc := `{
+    "name": "Example org-testing---",
+    "url": "http://example.org/some-uri-with-dashes",
+    "method": "GET",
+	"timeout": 10000,
+    "headers": [
+        "Authorization: Basic bG9sbGVyY29hc3Rlcgo=",
+        "Some-HTTP-Header: Blah blah"
+    ]
+}
+---`
+
+	reader := strings.NewReader(doc)
+	req, err := newRequest(reader)
+	if err != nil {
+		t.Errorf("failed parsing request: %v", err)
+	}
+}
+
 // Tests a request with a front matter divider, but without any content.
 func TestNewRequestNoFrontMatterWithDivider(t *testing.T) {
 	doc := `---
